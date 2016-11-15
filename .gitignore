@@ -1,0 +1,12 @@
+# Visual Studio
+###############
+**/obj/Debug/
+**/bin/Debug/
+**/obj/Release/
+**/bin/Release/
+.vs
+
+# NuGet
+#######
+packages
+*.nupkg
