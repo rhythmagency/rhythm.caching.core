@@ -141,6 +141,26 @@
             }
         }
 
+        /// <summary>
+        /// Indicates whether or not an instance was cached by the specified keys.
+        /// </summary>
+        /// <param name="keys">
+        /// Optional. The keys to store/retrieve a value by. Each key combination will
+        /// be treated as a separate cache.
+        /// </param>
+        /// <returns>
+        /// True, if an item was cached by the specified keys; otherwise, false.
+        /// </returns>
+        public bool WasCached(params string[] keys)
+        {
+            lock (InstanceLock)
+            {
+                return LastCache.HasValue
+                    ? Instances.ContainsKey(keys)
+                    : false;
+            }
+        }
+
         #endregion
 
         #region Private Methods
