@@ -155,6 +155,18 @@ Updates the cache value by the specified keys.
 | value | *\`0*<br>The value to update the cache with. |
 | doLock | *System.Boolean*<br>Lock the instance cache during the update? |
 
+### WasCached(keys)
+
+Indicates whether or not an instance was cached by the specified keys.
+
+| Name | Description |
+| ---- | ----------- |
+| keys | *System.String[]*<br>Optional. The keys to store/retrieve a value by. Each key combination will be treated as a separate cache. |
+
+#### Returns
+
+True, if an item was cached by the specified keys; otherwise, false.
+
 
 ## StringArrayComparer
 
