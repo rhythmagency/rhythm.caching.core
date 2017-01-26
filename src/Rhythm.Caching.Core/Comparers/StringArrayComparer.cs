@@ -66,7 +66,7 @@
                 var hashCode = default(int);
                 foreach (var item in items)
                 {
-                    hashCode ^= item.GetHashCode();
+                    hashCode ^= (item ?? string.Empty).GetHashCode();
                 }
                 return hashCode;
             }
