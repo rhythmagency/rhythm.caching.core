@@ -45,6 +45,7 @@
     <Compile Include="Comparers\StringArrayComparer.cs" />
     <Compile Include="Enums\CacheGetMethod.cs" />
     <Compile Include="Invalidators\ICacheByKeyInvalidator.cs" />
+    <Compile Include="Invalidators\ICacheInvalidator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Caches\InstanceCache.cs" />
   </ItemGroup>
