@@ -57,6 +57,6 @@
     <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
       <Output TaskParameter="Assemblies" ItemName="AssemblyVersion" />
     </GetAssemblyIdentity>
-    <Exec Command="$(ProjectDir)\..\..\build\nuget.build.bat %(AssemblyVersion.Version)" WorkingDirectory="$(ProjectDir)" />
+    <Exec Command="$(ProjectDir)\..\..\build\nuget.build.bat %(AssemblyVersion.Version)  $(Configuration)" WorkingDirectory="$(ProjectDir)" />
   </Target>
 </Project>
