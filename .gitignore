@@ -10,3 +10,6 @@
 #######
 packages
 *.nupkg
+
+# WebStorm
+.idea/
