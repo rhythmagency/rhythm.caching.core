@@ -8,7 +8,7 @@ Refer to the [generated documentation](docs/generated.md) for more details.
 
 # Installation
 
-Install with NuGet. Search for "Rhythm.Core".
+Install with NuGet. Search for "Rhythm.Caching.Core".
 
 # Overview
 
