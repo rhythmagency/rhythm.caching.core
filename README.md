@@ -34,7 +34,7 @@ be called if the cache needs to be updated.
 Here's an example that retrieves a random number from the cache. Because it is from
 the cache, the random number only changes once an hour (the duration of the cache):
 
-```
+```c#
 private static InstanceCache<int> NumberCache { get; set; } = new InstanceCache<int>();
 private static Random Generator { get; set; } = new Random();
 public int GetRandomNumberEveryHour()
