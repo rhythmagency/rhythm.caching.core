@@ -26,7 +26,7 @@
 
         #endregion
 
-        #region Instance Properties
+        #region Properties
 
         /// <summary>
         /// The instances stored by their key, then again by a contextual key.
@@ -38,6 +38,11 @@
         /// </summary>
         private object InstancesLock { get; set; }
 
+        /// <summary>
+        /// The amount of time to wait until giving up on a lock.
+        /// </summary>
+        private TimeSpan LockTimeout { get; set; }
+
         #endregion
 
         #region Constructors
@@ -45,8 +50,19 @@
         /// <summary>
         /// Default constructor.
         /// </summary>
-        public InstanceByKeyCache()
+        public InstanceByKeyCache() : this(CacheSettings.DefaultLockTimeout)
         {
+        }
+
+        /// <summary>
+        /// Constructor to specify a lock timeout.
+        /// </summary>
+        /// <param name="timeout">
+        /// The amount of time to wait before giving up on locking.
+        /// </param>
+        public InstanceByKeyCache(TimeSpan timeout)
+        {
+            LockTimeout = timeout;
             InstancesLock = new object();
             Instances = new Dictionary<TKey, Tuple<Dictionary<string[], T>, DateTime>>();
         }
@@ -81,8 +97,7 @@
             CacheGetMethod method = CacheGetMethod.Default, params string[] keys)
         {
             var gotValue = default(bool);
-            var timeout = CacheSettings.DefaultLockTimeout;
-            return TryGet(key, replenisher, duration, timeout, default(T), out gotValue, method, keys);
+            return TryGet(key, replenisher, duration, default(T), out gotValue, method, keys);
         }
 
         /// <summary>
@@ -96,9 +111,6 @@
         /// </param>
         /// <param name="duration">
         /// The duration to cache for.
-        /// </param>
-        /// <param name="timeout">
-        /// The amount of time to wait for a lock before giving up.
         /// </param>
         /// <param name="defaultValue">
         /// The value to use in the event that a value could not be retrieved (e.g.,
@@ -117,7 +129,7 @@
         /// <returns>
         /// The value.
         /// </returns>
-        public T TryGet(TKey key, Func<TKey, T> replenisher, TimeSpan duration, TimeSpan timeout, T defaultValue,
+        public T TryGet(TKey key, Func<TKey, T> replenisher, TimeSpan duration, T defaultValue,
             out bool gotValue, CacheGetMethod method = CacheGetMethod.Default, params string[] keys)
         {
 
@@ -129,7 +141,7 @@
                 var lockTaken = default(bool);
                 try
                 {
-                    Monitor.TryEnter(InstancesLock, timeout, ref lockTaken);
+                    Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                     if (lockTaken)
                     {
                         return TryGetByKeys(keys, key, out gotValue);
@@ -163,7 +175,7 @@
                 var lockTaken = default(bool);
                 try
                 {
-                    Monitor.TryEnter(InstancesLock, timeout, ref lockTaken);
+                    Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                     if (lockTaken)
                     {
                         var tempInstance = default(T);
@@ -273,7 +285,7 @@
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     cleared = false;
@@ -315,7 +327,7 @@
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     foreach (var key in keys)
@@ -364,7 +376,7 @@
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     var valueDictionary = default(Tuple<Dictionary<string[], T>, DateTime>);
