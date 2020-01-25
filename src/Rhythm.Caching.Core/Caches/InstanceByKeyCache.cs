@@ -148,6 +148,7 @@
                     }
                     else
                     {
+                        CacheSettings.FailedLockHandler(LockTimeout);
                         gotValue = false;
                         return defaultValue;
                     }
@@ -250,6 +251,7 @@
                     }
                     else
                     {
+                        CacheSettings.FailedLockHandler(LockTimeout);
                         gotValue = false;
                         return defaultValue;
                     }
@@ -292,6 +294,7 @@
                 }
                 else
                 {
+                    CacheSettings.FailedLockHandler(LockTimeout);
                     Instances.Clear();
                     cleared = true;
                 }
@@ -338,6 +341,7 @@
                 }
                 else
                 {
+                    CacheSettings.FailedLockHandler(LockTimeout);
                     cleared = false;
                 }
             }
@@ -388,6 +392,10 @@
                             return value;
                         }
                     }
+                }
+                else
+                {
+                    CacheSettings.FailedLockHandler(LockTimeout);
                 }
             }
             finally
