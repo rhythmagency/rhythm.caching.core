@@ -41,7 +41,7 @@
         /// Test to ensure the cache expires in the expected amount of time.
         /// </summary>
         [TestMethod]
-        public void CacheExpiresOnTimeTest()
+        public void CacheLockExpiresOnTimeTest()
         {
             var cache = new InstanceCache<string>(TwoSeconds);
             var startTime = DateTime.Now;
@@ -76,6 +76,44 @@
             var value = cache.Get(CacheDuration, () => firstValue);
             value = cache.Get(CacheDuration, () => "World");
             Assert.AreEqual("Hello", value);
+        }
+
+        /// <summary>
+        /// Test to ensure the lock timeout would never expire when the default constructor
+        /// for InstanceCache is used (i.e., when no timeout is specified).
+        /// </summary>
+        [TestMethod]
+        public void CacheLockNeverExpiresTest()
+        {
+            Assert.AreEqual(TimeSpan.FromMilliseconds(-1), CacheSettings.DefaultLockTimeout);
+            var cache = new InstanceCache<string>();
+            var startTime = DateTime.Now;
+            var value = cache.Get(CacheDuration, () =>
+            {
+                var result = "Initial";
+                var thread = new Thread(new ThreadStart(() =>
+                {
+                    try
+                    {
+                        result = cache.Get(CacheDuration, () =>
+                        {
+                            return "Hello";
+                        });
+                    }
+                    catch (ThreadAbortException)
+                    {
+                        Thread.ResetAbort();
+                    }
+                }));
+                thread.Start();
+                thread.Join(TwoSeconds);
+                thread.Abort();
+                return result;
+            });
+            var endTime = DateTime.Now;
+            var diff = endTime.Subtract(startTime);
+            Assert.AreEqual("Initial", value);
+            Assert.IsTrue(diff.TotalSeconds >= 1.8 && diff.TotalSeconds < 3);
         }
 
         #endregion
