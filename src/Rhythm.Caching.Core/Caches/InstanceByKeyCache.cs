@@ -6,6 +6,7 @@
     using Enums;
     using System;
     using System.Collections.Generic;
+    using System.Threading;
 
     /// <summary>
     /// Caches instance variables by key in a dictionary-like structure.
@@ -25,7 +26,7 @@
 
         #endregion
 
-        #region Properties
+        #region Instance Properties
 
         /// <summary>
         /// The instances stored by their key, then again by a contextual key.
@@ -79,15 +80,72 @@
         public T Get(TKey key, Func<TKey, T> replenisher, TimeSpan duration,
             CacheGetMethod method = CacheGetMethod.Default, params string[] keys)
         {
+            var gotValue = default(bool);
+            var timeout = CacheSettings.DefaultLockTimeout;
+            return TryGet(key, replenisher, duration, timeout, default(T), out gotValue, method, keys);
+        }
+
+        /// <summary>
+        /// Gets the instance variable (either from the cache or from the specified function).
+        /// </summary>
+        /// <param name="key">
+        /// The key to use when fetching the variable.
+        /// </param>
+        /// <param name="replenisher">
+        /// The function that replenishes the cache.
+        /// </param>
+        /// <param name="duration">
+        /// The duration to cache for.
+        /// </param>
+        /// <param name="timeout">
+        /// The amount of time to wait for a lock before giving up.
+        /// </param>
+        /// <param name="defaultValue">
+        /// The value to use in the event that a value could not be retrieved (e.g.,
+        /// if the lock could not be achieved within the timeout).
+        /// </param>
+        /// <param name="gotValue">
+        /// Was the value retrieved, or was the default value used instead?
+        /// </param>
+        /// <param name="method">
+        /// Optional. The cache method to use when retrieving the value.
+        /// </param>
+        /// <param name="keys">
+        /// Optional. The keys to store/retrieve a value by. Each key combination will
+        /// be treated as a separate cache.
+        /// </param>
+        /// <returns>
+        /// The value.
+        /// </returns>
+        public T TryGet(TKey key, Func<TKey, T> replenisher, TimeSpan duration, TimeSpan timeout, T defaultValue,
+            out bool gotValue, CacheGetMethod method = CacheGetMethod.Default, params string[] keys)
+        {
 
             // Which cache retrieval method should be used?
             if (method == CacheGetMethod.FromCache)
             {
 
                 // Get directly from cache.
-                lock (InstancesLock)
+                var lockTaken = default(bool);
+                try
                 {
-                    return TryGetByKeys(keys, key);
+                    Monitor.TryEnter(InstancesLock, timeout, ref lockTaken);
+                    if (lockTaken)
+                    {
+                        return TryGetByKeys(keys, key, out gotValue);
+                    }
+                    else
+                    {
+                        gotValue = false;
+                        return defaultValue;
+                    }
+                }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        Monitor.Exit(InstancesLock);
+                    }
                 }
 
             }
@@ -95,78 +153,101 @@
             {
 
                 // Get directly from replenisher.
-                return replenisher(key);
+                var returnValue = replenisher(key);
+                gotValue = true;
+                return returnValue;
 
             }
             else
             {
-                lock (InstancesLock)
+                var lockTaken = default(bool);
+                try
                 {
-                    var tempInstance = default(T);
-                    var now = DateTime.Now;
-                    if (method == CacheGetMethod.Recache)
+                    Monitor.TryEnter(InstancesLock, timeout, ref lockTaken);
+                    if (lockTaken)
                     {
-
-                        // Force the cache to replenish.
-                        tempInstance = replenisher(key);
-                        UpdateValueByKeys(keys, key, tempInstance, now, false);
-
-                    }
-                    else
-                    {
-
-                        // Value already cached?
-                        var tempTuple = default(Tuple<Dictionary<string[], T>, DateTime>);
-                        if (Instances.TryGetValue(key, out tempTuple)
-                            && tempTuple.Item1.ContainsKey(keys))
+                        var tempInstance = default(T);
+                        var now = DateTime.Now;
+                        if (method == CacheGetMethod.Recache)
                         {
-                            if (now.Subtract(Instances[key].Item2) >= duration)
+
+                            // Force the cache to replenish.
+                            tempInstance = replenisher(key);
+                            gotValue = true;
+                            UpdateValueByKeysWithoutLock(keys, key, tempInstance, now);
+
+                        }
+                        else
+                        {
+
+                            // Value already cached?
+                            var tempTuple = default(Tuple<Dictionary<string[], T>, DateTime>);
+                            if (Instances.TryGetValue(key, out tempTuple) && tempTuple.Item1.ContainsKey(keys))
+                            {
+                                if (now.Subtract(Instances[key].Item2) >= duration)
+                                {
+                                    if (method == CacheGetMethod.NoStore)
+                                    {
+
+                                        // Cache expired. Get a new value without modifying the cache.
+                                        tempInstance = replenisher(key);
+                                        gotValue = true;
+
+                                    }
+                                    else
+                                    {
+
+                                        // Cache expired. Replenish the cache.
+                                        tempInstance = replenisher(key);
+                                        gotValue = true;
+                                        UpdateValueByKeysWithoutLock(keys, key, tempInstance, now);
+
+                                    }
+                                }
+                                else
+                                {
+
+                                    // Cache still valid. Use cached value.
+                                    tempInstance = TryGetByKeys(keys, key, out gotValue);
+
+                                }
+                            }
+                            else
                             {
                                 if (method == CacheGetMethod.NoStore)
                                 {
 
-                                    // Cache expired. Get a new value without modifying the cache.
+                                    // No cached value. Get a new value without modifying the cache.
                                     tempInstance = replenisher(key);
+                                    gotValue = true;
 
                                 }
                                 else
                                 {
 
-                                    // Cache expired. Replenish the cache.
+                                    // No cached value. Replenish the cache.
                                     tempInstance = replenisher(key);
-                                    UpdateValueByKeys(keys, key, tempInstance, now, false);
+                                    gotValue = true;
+                                    UpdateValueByKeysWithoutLock(keys, key, tempInstance, now);
 
                                 }
                             }
-                            else
-                            {
 
-                                // Cache still valid. Use cached value.
-                                tempInstance = TryGetByKeys(keys, key);
-
-                            }
                         }
-                        else
-                        {
-                            if (method == CacheGetMethod.NoStore)
-                            {
-
-                                // No cached value. Get a new value without modifying the cache.
-                                tempInstance = replenisher(key);
-
-                            }
-                            else
-                            {
-
-                                // No cached value. Replenish the cache.
-                                tempInstance = replenisher(key);
-                                UpdateValueByKeys(keys, key, tempInstance, now, false);
-
-                            }
-                        }
-
+                        return tempInstance;
                     }
-                    return tempInstance;
+                    else
+                    {
+                        gotValue = false;
+                        return defaultValue;
+                    }
+                }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        Monitor.Exit(InstancesLock);
+                    }
                 }
             }
 
@@ -177,9 +258,38 @@
         /// </summary>
         public void Clear()
         {
-            lock (InstancesLock)
+            var cleared = default(bool);
+            Clear(out cleared);
+        }
+
+        /// <summary>
+        /// Clears the cache.
+        /// </summary>
+        /// <param name="cleared">
+        /// Was the cache cleared successfully?
+        /// </param>
+        public void Clear(out bool cleared)
+        {
+            var lockTaken = default(bool);
+            try
             {
-                Instances.Clear();
+                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                if (lockTaken)
+                {
+                    cleared = false;
+                }
+                else
+                {
+                    Instances.Clear();
+                    cleared = true;
+                }
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(InstancesLock);
+                }
             }
         }
 
@@ -189,11 +299,41 @@
         /// <param name="keys">The keys to clear the cache of.</param>
         public void ClearKeys(IEnumerable<TKey> keys)
         {
-            lock (InstancesLock)
+            var cleared = default(bool);
+            ClearKeys(keys, out cleared);
+        }
+
+        /// <summary>
+        /// Clears the cache of the specified keys.
+        /// </summary>
+        /// <param name="keys">The keys to clear the cache of.</param>
+        /// <param name="cleared">
+        /// Were the keys cleared successfully?
+        /// </param>
+        public void ClearKeys(IEnumerable<TKey> keys, out bool cleared)
+        {
+            var lockTaken = default(bool);
+            try
             {
-                foreach (var key in keys)
+                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                if (lockTaken)
                 {
-                    Instances.Remove(key);
+                    foreach (var key in keys)
+                    {
+                        Instances.Remove(key);
+                    }
+                    cleared = true;
+                }
+                else
+                {
+                    cleared = false;
+                }
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(InstancesLock);
                 }
             }
         }
@@ -211,59 +351,42 @@
         /// <param name="accessKey">
         /// The key to use to access the value.
         /// </param>
+        /// <param name="gotValue">
+        /// True, if an existing value was retrieved; otherwise, false.
+        /// </param>
         /// <returns>
         /// The value, or the default for the type.
         /// </returns>
-        private T TryGetByKeys(string[] keys, TKey accessKey)
+        private T TryGetByKeys(string[] keys, TKey accessKey, out bool gotValue)
         {
             var chosenKeys = keys ?? EmptyArray;
             var value = default(T);
-            lock (InstancesLock)
+            var lockTaken = default(bool);
+            try
             {
-                var valueDictionary = default(Tuple<Dictionary<string[], T>, DateTime>);
-                if (Instances.TryGetValue(accessKey, out valueDictionary))
+                Monitor.TryEnter(InstancesLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
+                if (lockTaken)
                 {
-                    if (valueDictionary.Item1.TryGetValue(chosenKeys, out value))
+                    var valueDictionary = default(Tuple<Dictionary<string[], T>, DateTime>);
+                    if (Instances.TryGetValue(accessKey, out valueDictionary))
                     {
-                        return value;
+                        if (valueDictionary.Item1.TryGetValue(chosenKeys, out value))
+                        {
+                            gotValue = true;
+                            return value;
+                        }
                     }
                 }
             }
-            return default(T);
-        }
-
-        /// <summary>
-        /// Updates the cache value by the specified keys.
-        /// </summary>
-        /// <param name="keys">
-        /// The keys to cache by.
-        /// </param>
-        /// <param name="accessKey">
-        /// The key to use to access the value.
-        /// </param>
-        /// <param name="value">
-        /// The value to update the cache with.
-        /// </param>
-        /// <param name="lastCache">
-        /// The date/time to mark the cache as last updated.
-        /// </param>
-        /// <param name="doLock">
-        /// Lock the instance cache during the update?
-        /// </param>
-        private void UpdateValueByKeys(string[] keys, TKey accessKey, T value,
-            DateTime lastCache, bool doLock = true)
-        {
-            if (doLock)
+            finally
             {
-                lock (InstancesLock)
+                if (lockTaken)
                 {
-                    UpdateValueByKeysWithoutLock(keys, accessKey, value, lastCache);
+                    Monitor.Exit(InstancesLock);
                 }
             }
-            else
-            {
-                UpdateValueByKeysWithoutLock(keys, accessKey, value, lastCache);
-            }
+            gotValue = false;
+            return default(T);
         }
 
         /// <summary>
@@ -277,6 +400,9 @@
         /// </param>
         /// <param name="value">
         /// The value to update the cache with.
+        /// </param>
+        /// <param name="lastCache">
+        /// The date/time to mark the cache as last updated.
         /// </param>
         private void UpdateValueByKeysWithoutLock(string[] keys, TKey accessKey,
             T value, DateTime lastCache)

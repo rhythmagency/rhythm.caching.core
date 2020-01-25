@@ -42,6 +42,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CacheSettings.cs" />
     <Compile Include="Caches\InstanceByKeyCache.cs" />
     <Compile Include="Comparers\StringArrayComparer.cs" />
     <Compile Include="Enums\CacheGetMethod.cs" />

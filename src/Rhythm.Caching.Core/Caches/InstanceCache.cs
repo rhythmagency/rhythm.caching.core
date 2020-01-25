@@ -23,16 +23,7 @@
 
         #endregion
 
-        #region Static Properties
-
-        /// <summary>
-        /// The duration to use by default for the timeout for locks.
-        /// </summary>
-        public static TimeSpan DefaultLockTimeout { get; set; }
-
-        #endregion
-
-        #region Instance Properties
+        #region Properties
 
         private DateTime? LastCache { get; set; }
         private Dictionary<string[], T> Instances { get; set; }
@@ -41,17 +32,6 @@
         #endregion
 
         #region Constructors
-
-        /// <summary>
-        /// Static constructor.
-        /// </summary>
-        static InstanceCache()
-        {
-
-            // Set the default lock timeout to be infinite.
-            DefaultLockTimeout = TimeSpan.FromMilliseconds(-1);
-
-        }
 
         /// <summary>
         /// Default constructor.
@@ -90,7 +70,7 @@
             CacheGetMethod method = CacheGetMethod.Default, params string[] keys)
         {
             var gotValue = default(bool);
-            var timeout = DefaultLockTimeout;
+            var timeout = CacheSettings.DefaultLockTimeout;
             return TryGet(duration, timeout, replenisher, default(T), out gotValue, method,
                 keys);
         }
@@ -251,12 +231,15 @@
         /// <summary>
         /// Clears the cache.
         /// </summary>
+        /// <param name="cleared">
+        /// Was the cache cleared successfully?
+        /// </param>
         public void Clear(out bool cleared)
         {
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstanceLock, DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstanceLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     cleared = false;
@@ -311,7 +294,7 @@
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstanceLock, DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstanceLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     successful = true;
@@ -357,7 +340,7 @@
             var lockTaken = default(bool);
             try
             {
-                Monitor.TryEnter(InstanceLock, DefaultLockTimeout, ref lockTaken);
+                Monitor.TryEnter(InstanceLock, CacheSettings.DefaultLockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
                     if (Instances.TryGetValue(chosenKeys, out value))
