@@ -10,7 +10,7 @@
     <description>Core caching .Net library used by Rhythm Agency.</description>
     <!-- Temporarily add release notes here (uncomment below tag). -->
     <!--<releaseNotes>Release notes go here...</releaseNotes>-->
-    <copyright>Copyright 2016</copyright>
+    <copyright>Copyright 2021</copyright>
     <tags>caching</tags>
   </metadata>
 </package>
