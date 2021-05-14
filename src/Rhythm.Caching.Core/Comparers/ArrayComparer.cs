@@ -6,9 +6,9 @@
     using System.Linq;
 
     /// <summary>
-    /// Compares an array of strings.
+    /// Compares an array of items.
     /// </summary>
-    public class StringArrayComparer : IEqualityComparer<string[]>
+    public class ArrayComparer<T> : IEqualityComparer<T[]>
     {
 
         #region Methods
@@ -26,11 +26,11 @@
         /// True, if the arrays are both null, are both empty, or both have
         /// the same strings in the same order; otherwise, false.
         /// </returns>
-        public bool Equals(string[] x, string[] y)
+        public bool Equals(T[] x, T[] y)
         {
-            if (x == null || y == null)
+            if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
             {
-                return x == null && y == null;
+                return ReferenceEquals(x, y);
             }
             if (x.Length != y.Length)
             {
@@ -38,7 +38,14 @@
             }
             for (var i = 0; i < x.Length; i++)
             {
-                if (x[i] != y[i])
+                if (ReferenceEquals(x[i], null) || ReferenceEquals(y[i], null))
+                {
+                    if (!ReferenceEquals(x[i], y[i]))
+                    {
+                        return false;
+                    }
+                }
+                else if (!x[i].Equals(y[i]))
                 {
                     return false;
                 }
@@ -47,17 +54,17 @@
         }
 
         /// <summary>
-        /// Generates a hash code by combining all of the hash codes for the strings in the array.
+        /// Generates a hash code by combining all of the hash codes for the items in the array.
         /// </summary>
         /// <param name="items">
-        /// The array of strings.
+        /// The array of items.
         /// </param>
         /// <returns>
         /// The combined hash code.
         /// </returns>
-        public int GetHashCode(string[] items)
+        public int GetHashCode(T[] items)
         {
-            if (items == null || !items.Any())
+            if (ReferenceEquals(items, null) || !items.Any())
             {
                 return 0;
             }
@@ -66,7 +73,10 @@
                 var hashCode = default(int);
                 foreach (var item in items)
                 {
-                    hashCode ^= (item ?? string.Empty).GetHashCode();
+                    if (!ReferenceEquals(item, null))
+                    {
+                        hashCode ^= item.GetHashCode();
+                    }
                 }
                 return hashCode;
             }

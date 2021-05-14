@@ -52,7 +52,7 @@
             LockTimeout = timeout;
             InstanceLock = new object();
             LastCache = null;
-            Instances = new Dictionary<string[], T>(new StringArrayComparer());
+            Instances = new Dictionary<string[], T>(new ArrayComparer<string>());
         }
 
         #endregion

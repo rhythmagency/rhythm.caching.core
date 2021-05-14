@@ -44,10 +44,11 @@
   <ItemGroup>
     <Compile Include="CacheSettings.cs" />
     <Compile Include="Caches\InstanceByKeyCache.cs" />
-    <Compile Include="Comparers\StringArrayComparer.cs" />
+    <Compile Include="Comparers\ArrayComparer.cs" />
     <Compile Include="Enums\CacheGetMethod.cs" />
     <Compile Include="Invalidators\ICacheByKeyInvalidator.cs" />
     <Compile Include="Invalidators\ICacheInvalidator.cs" />
+    <Compile Include="KeyTypes\ArrayKey.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Caches\InstanceCache.cs" />
   </ItemGroup>

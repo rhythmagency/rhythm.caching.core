@@ -439,7 +439,7 @@
             }
             else
             {
-                instanceDictionary = new Dictionary<string[], T>(new StringArrayComparer());
+                instanceDictionary = new Dictionary<string[], T>(new ArrayComparer<string>());
             }
 
             // Update the value in the dictionary.
