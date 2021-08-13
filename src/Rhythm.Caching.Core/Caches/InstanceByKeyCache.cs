@@ -290,13 +290,13 @@
                 Monitor.TryEnter(InstancesLock, LockTimeout, ref lockTaken);
                 if (lockTaken)
                 {
-                    cleared = false;
+                    Instances.Clear();
+                    cleared = true;
                 }
                 else
                 {
                     CacheSettings.FailedLockHandler(LockTimeout);
-                    Instances.Clear();
-                    cleared = true;
+                    cleared = false;
                 }
             }
             finally

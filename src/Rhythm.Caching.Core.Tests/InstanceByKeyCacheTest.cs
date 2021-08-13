@@ -104,6 +104,39 @@
             Assert.AreEqual("Second", value3);
         }
 
+        /// <summary>
+        /// Test to make sure cache gets cleared successfully when .Clear() is called 
+        /// (either explicitly/manually or by an invalidator)
+        /// </summary>
+        [TestMethod]
+        public void ClearCacheTest()
+        {
+            // set up cache with an initial value
+            var cache = new InstanceByKeyCache<string, string>();
+            var key = "randomKey";
+            var cachedValue = "Initial value";
+
+            // get value from cache and check it matches initial
+            var value = cache.Get(key, (localKey) =>
+            {
+                return cachedValue;
+            }, CacheDuration);
+            Assert.AreEqual("Initial value", value);
+
+            // clear the cache
+            cache.Clear();
+
+            // change the cached value
+            cachedValue = "Changed value";
+
+            // check that it returns the changed value
+            value = cache.Get(key, (localKey) =>
+            {
+                return cachedValue;
+            }, CacheDuration);
+            Assert.AreEqual("Changed value", value);
+        }
+
         #endregion
 
     }
