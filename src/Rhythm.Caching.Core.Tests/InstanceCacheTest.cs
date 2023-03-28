@@ -102,12 +102,11 @@
                     }
                     catch (ThreadAbortException)
                     {
-                        Thread.ResetAbort();
+                        // Do nothing.
                     }
                 }));
                 thread.Start();
                 thread.Join(TwoSeconds);
-                thread.Abort();
                 return result;
             });
             var endTime = DateTime.Now;
